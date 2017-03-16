@@ -1,5 +1,7 @@
 require upm.inc
 
+SRC_URI += "file://c++-bus-autodetect.patch"
+
 EXTRA_OECMAKE_light-lake = "-DMODULE_LIST="lp8860;si1132;ads1x15;hlg150h;max44009;bmp180;bmpx8x;si7005;ds1808lc;t6713;bme280" "
 EXTRA_OECMAKE_intel-aero = "-DMODULE_LIST="bmi160;bmx055;ms5611" -DBUILDEXAMPLES=ON -DCMAKE_SKIP_BUILD_RPATH=TRUE"
 

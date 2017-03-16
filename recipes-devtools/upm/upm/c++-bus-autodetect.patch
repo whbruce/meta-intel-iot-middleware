@@ -1,0 +1,122 @@
+From 20537c2b5275a14f388389c6fb58c3070a931a19 Mon Sep 17 00:00:00 2001
+From: Henry Bruce <henry.bruce@intel.com>
+Date: Wed, 30 Nov 2016 13:43:15 -0800
+Subject: [PATCH 1/3] c++ examples: Autodetect bmi160 connection (spi or i2c
+ default bus)
+
+Signed-off-by: Henry Bruce <henry.bruce@intel.com>
+---
+ examples/c++/bmi160.cxx | 25 +++++++++++++++++++++++--
+ 1 file changed, 23 insertions(+), 2 deletions(-)
+
+diff --git a/examples/c++/bmi160.cxx b/examples/c++/bmi160.cxx
+index 6f98556..3d9a7dd 100644
+--- a/examples/c++/bmi160.cxx
++++ b/examples/c++/bmi160.cxx
+@@ -23,6 +23,7 @@
+  */
+ 
+ #include <unistd.h>
++#include <string>
+ #include <iostream>
+ #include <signal.h>
+ #include "bmi160.hpp"
+@@ -41,10 +42,30 @@ void sig_handler(int signo)
+ int main(int argc, char **argv)
+ {
+   signal(SIGINT, sig_handler);
++  upm::BMI160 *sensor = NULL;
+ //! [Interesting]
+ 
+-  // Instantiate a BMI160 instance using default i2c bus and address
+-  upm::BMI160 *sensor = new upm::BMI160();
++  // Instantiate a BMI160 instance using default i2c bus and address.
++  // If that fails, try default spi bus.
++  try
++  {
++    sensor = new upm::BMI160();
++  }
++  catch (std::exception& e)
++  {
++    std::cout << "Failed to connect via I2C, trying default SPI bus" << std::endl;
++  }
++
++  try
++  {
++    if (sensor == NULL)
++      sensor = new upm::BMI160(0, -1);
++  }
++  catch (std::exception& e)
++  {
++    std::cout << "Failed to connect via SPI, exiting." << std::endl;
++    return -1;
++  }
+ 
+   while (shouldRun)
+     {
+
+From 833ec7079f8dc3bf6965df54c6fe7d22eec2efe5 Mon Sep 17 00:00:00 2001
+From: Henry Bruce <henry.bruce@intel.com>
+Date: Wed, 30 Nov 2016 13:43:41 -0800
+Subject: [PATCH 2/3] c++ examples: Autodetect bmm150 i2c address
+
+Signed-off-by: Henry Bruce <henry.bruce@intel.com>
+---
+ examples/c++/bmm150.cxx | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/examples/c++/bmm150.cxx b/examples/c++/bmm150.cxx
+index 400f1a9..da1c0e9 100644
+--- a/examples/c++/bmm150.cxx
++++ b/examples/c++/bmm150.cxx
+@@ -44,8 +44,25 @@ int main(int argc, char **argv)
+ //! [Interesting]
+ 
+   // Instantiate an BMM150 using default I2C parameters
+-  upm::BMM150 *sensor = new upm::BMM150();
++  upm::BMM150 *sensor = NULL;
+ 
++  for (int i = 0; i < 4 && sensor == NULL; ++i)
++  {
++    try
++    {
++      cout << "Trying i2c address " << hex << showbase << BMM150_DEFAULT_ADDR + i << endl;
++      sensor = new upm::BMM150(BMM150_I2C_BUS, BMM150_DEFAULT_ADDR + i);
++    }
++    catch (std::exception& e)
++    {
++    }
++
++  }
++
++  if (sensor == NULL)
++  {
++    cout << "Sensor not detected." << endl;
++  }
+   // For SPI, bus 0, you would pass -1 as the address, and a valid pin
+   // for CS: BMM150(0, -1, 10);
+ 
+
+From 388b89de3fa29d5f52e4e3f5dcacc9cd500eb941 Mon Sep 17 00:00:00 2001
+From: Henry Bruce <henry.bruce@intel.com>
+Date: Wed, 30 Nov 2016 13:45:08 -0800
+Subject: [PATCH 3/3] ms5611: Use i2c bus from ctor instead of hard-coded value
+
+Signed-off-by: Henry Bruce <henry.bruce@intel.com>
+---
+ src/ms5611/ms5611.cxx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/ms5611/ms5611.cxx b/src/ms5611/ms5611.cxx
+index 29029b6..4ca332d 100644
+--- a/src/ms5611/ms5611.cxx
++++ b/src/ms5611/ms5611.cxx
+@@ -54,7 +54,7 @@ using namespace upm;
+ MS5611::MS5611(int i2cBus, int address)
+ {
+     status = mraa::ERROR_INVALID_RESOURCE;
+-    i2c = new mraa::I2c(2);
++    i2c = new mraa::I2c(i2cBus);
+     this->address = address;
+     i2c->address(address);
+     prom = new uint16_t[MS5611_PROM_SIZE];
